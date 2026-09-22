@@ -2,135 +2,141 @@
 
 Pair-programmed by SE Community + Cortex Code
 
-A CoWork-only demonstration of evidence-backed restaurant performance analysis.
-The agent investigates guest changes, separates lifecycle effects, compares
-pre-period peers, and proposes tests without claiming to have proven a cause.
-All runtime observations are fictional. No customer data is deployed.
+A CoWork-only demo that investigates fictional restaurant performance, separates
+lifecycle effects, compares pre-period peers, and proposes tests without claiming
+to have proven a cause. No customer data is included.
 
 ![Expires](https://img.shields.io/badge/Expires-2026--10--22-orange)
 
 ## Quick Start
 
-Use Python 3.11+, Snowflake CLI (`snow`) 3.24.1+ and Cortex CLI with agent-studio.
-Configure a named demo connection with default role SYSADMIN and permission to
-use SECURITYADMIN. Keep credentials in the CLI credential store, not this project.
+Deploy from a Snowsight SQL worksheet. No local Python installation, CLI, CSV
+upload or web application is required. Python generation runs inside Snowflake.
 
-Set the target once in your terminal (values are prompted, not stored in source):
+1. Choose a dedicated demo account with Cortex Agents, Cortex Analyst and Python
+   stored procedures available. The deploying administrator must be able to use
+   ACCOUNTADMIN, SYSADMIN and SECURITYADMIN. Review the SQL before running it.
+2. Run [bootstrap.sql](bootstrap.sql) once. It creates a narrowly scoped public
+   Git API integration and repository clone. No GitHub token is needed.
+3. In the same worksheet, set the intended account explicitly, then deploy:
 
-```bash
-read -r -p 'Demo connection name: ' DEMO_CONNECTION
-read -r -p 'Expected organization: ' DEMO_ORG
-read -r -p 'Expected account name: ' DEMO_ACCOUNT
-read -r -p 'User to receive the reader role: ' DEMO_USER
+```sql
+SET RR_EXPECTED_ACCOUNT = 'YOUR_ORGANIZATION.YOUR_ACCOUNT';
+SET RR_CONFIRM = 'DEPLOY';
+EXECUTE IMMEDIATE FROM
+  @SNOWFLAKE_EXAMPLE.GIT_REPOS.RESTAURANT_RECOVERY_REPO/branches/main/deploy_all.sql;
 ```
 
-Preview, then deploy:
+The account value is a safety confirmation, not a credential. Replace it with
+your intended account name; do not compute it automatically from the session.
+Deployment fetches `main`, resolves a full commit hash, and pins all subsequent
+SQL, imports, specifications and copied skills to that revision. Run the same
+command to redeploy after merging a source change.
 
-```bash
-bash deploy_all.sh --connection "$DEMO_CONNECTION" --organization "$DEMO_ORG" --account "$DEMO_ACCOUNT"
-bash deploy_all.sh --connection "$DEMO_CONNECTION" --organization "$DEMO_ORG" --account "$DEMO_ACCOUNT" --reader-user "$DEMO_USER" --apply
+4. Grant the reader role to your chosen user, then select
+   `RESTAURANT_RECOVERY_AGENT` in CoWork:
+
+```sql
+USE ROLE SECURITYADMIN;
+GRANT ROLE SFE_RESTAURANT_RECOVERY_READER TO USER YOUR_USER;
 ```
 
-Run the prompts in Bash (`bash` first if your shell is zsh). Open CoWork in that
-account and select `RESTAURANT_RECOVERY_AGENT`. [Plain-language overview](ELI5.md).
-The wrapper is packaged and locally tested; a live teardown/redeploy round-trip
-has not been run. [Audit and remaining release gates](docs/06-APPLYRULES-AUDIT.md).
+No user defaults or PUBLIC grants are changed. Ensure the role used by CoWork
+inherits the reader role; user default-role behavior can differ from worksheet
+role selection. [Plain-language overview](ELI5.md).
 
-## Architecture
+**Validation status:** the native Git deployment is newly packaged, not yet
+cloud-executed end to end. These local changes must be committed and pushed before
+Snowflake can fetch them. Prior API tests validate the analytical demo, not this
+new deployment path. See [acceptance](docs/05-COWORK-ACCEPTANCE.md).
 
-Seeded daily observations -> canonical tables -> deterministic SQL views ->
-semantic views -> skill-guided Cortex Agent -> CoWork.
+## What Deployment Does
 
-CoCo is the engineering interface. There is no local web application, map server,
-Node.js dependency, or Streamlit deployment.
+`bootstrap.sql` creates the public Git integration and clone under
+`SNOWFLAKE_EXAMPLE.GIT_REPOS`. `deploy_all.sql` orchestrates the following:
 
-## Directory
+- Checks explicit account confirmation and project schema/warehouse markers.
+- Creates the dedicated X-Small warehouse, schema, six tables and skill stage.
+- Runs the seeded generator in a caller-rights Python procedure inside Snowflake.
+- Validates observations, stages typed temporary tables, then replaces all six
+  canonical tables in one transaction with row-count checks and rollback on error.
+- Creates seven analytical views and three semantic views from checked-in specs.
+- Copies only two runtime SKILL.md files into commit-specific stage directories.
+- Creates or replaces the demo agent with COPY GRANTS and restores reader grants.
+- Removes the deployment-only helper procedure after successful deployment.
 
-- `sql/`: resource setup, staged CSV loading, analytical views, and reader grants.
-- `cortex_project/`: tracked semantic-view and agent specifications.
-- `skills/`: agent runtime investigation and prospective test-design instructions.
+The release has 36 fictional restaurants, 728 dates, four dayparts and three
+channels. Its fixed as-of date is 2026-09-14, independent of today's date.
+
+**Reruns replace synthetic data and reset the demo agent's version history.** This
+is rebuildable demo infrastructure, not an in-place production release manager.
+Use a quiet demo window: the complete DDL/data/agent sequence is not atomic.
+Failures stop execution; inspect the error, fix the cause and rerun. No automatic
+rollback covers DDL or agent replacement. Do not run deployments concurrently or
+repurpose these dedicated names for real data. Same release IDs are not proof
+that someone has not manually altered a table.
+
+## Remove And Rebuild
+
+Use a worksheet in the intended account:
+
+```sql
+SET RR_EXPECTED_ACCOUNT = 'YOUR_ORGANIZATION.YOUR_ACCOUNT';
+SET RR_CONFIRM = 'TEARDOWN';
+EXECUTE IMMEDIATE FROM
+  @SNOWFLAKE_EXAMPLE.GIT_REPOS.RESTAURANT_RECOVERY_REPO/branches/main/teardown_all.sql;
+```
+
+Teardown removes exact named project objects, its stage contents, warehouse and
+reader role (including assignments). It preserves the shared database, shared
+semantic schema, Git repository and API integration so you can deploy again.
+The project schema uses RESTRICT, not CASCADE. An unexpected dependent object
+can stop teardown after earlier drops; investigate instead of broadening deletion.
+The legacy CSV format is included in cleanup for earlier installations.
+
+To rebuild, set `RR_CONFIRM = 'DEPLOY'` and rerun the deployment command. To fetch
+updated entry-point scripts before either operation:
+
+```sql
+USE ROLE SYSADMIN;
+ALTER GIT REPOSITORY SNOWFLAKE_EXAMPLE.GIT_REPOS.RESTAURANT_RECOVERY_REPO FETCH;
+```
+
+Keep bootstrap resources unless retiring the source connection too. Dropped table
+storage can remain under Time Travel/Fail-safe. Warehouse auto-suspend does not
+cap Cortex service spend; generation, querying, AI and file copies consume credits.
+
+## Architecture And Files
+
+Seeded observations -> canonical tables -> deterministic SQL evidence -> semantic
+views -> skill-guided Cortex Agent -> CoWork.
+
+- `bootstrap.sql`: one-time public Git integration and clone.
+- `deploy_all.sql` / `teardown_all.sql`: worksheet lifecycle entry points.
+- `sql/deploy.sql`: commit-pinned setup, generation, views, skills and access.
+- `tools/native_runtime.py`: Snowflake-executed generation and spec deployment.
+- `tools/generate_cowork.py`: reproducible fictional observations and validation.
+- `cortex_project/`: JSON-compatible YAML semantic and agent specs.
+- `skills/`: runtime investigation and prospective test-design workflows.
 - `.claude/skills/`: project engineering and source-mapping workflows.
-- `tools/`: v3 generator, mapping boundary, spec builder, and repeatable checks.
-- `deploy_all.sh` / `teardown_all.sh`: complete, explicit-target lifecycle entry points.
-- `deploy_all.sql` / `teardown_all.sql`: SQL orchestration and exact drop manifest.
-- `docs/04-COWORK-CONTRACT.md`: current grains, units, matching rules and coverage.
-- `docs/05-COWORK-ACCEPTANCE.md`: measured validation and remaining limitations.
-- `local/`: optional ignored output directory, created only by local development commands.
-
-## Local Checks
-
-Run from this directory with Python 3.11 or later:
-
-```bash
-python3 -B -m unittest discover -s tools -p 'test_cowork.py'
-python3 -B -m unittest discover -s tools -p 'test_mapping.py'
-python3 -B -m unittest discover -s tools -p 'test_lifecycle.py'
-```
-
-Regenerate the current synthetic release when needed:
-
-```bash
-python3 tools/generate_cowork.py --output local/cowork-v3
-```
-
-The release contains 36 restaurants, 728 business dates, four dayparts and three
-channels. Its as-of date is 2026-09-14. Informational review date: 2026-10-22.
-
-## Cloud Boundary
-
-The demo has been deployed and API-tested in an explicitly approved demo account.
-Never deploy to the IDE's active account implicitly. Cloud scripts and API checks
-require an explicitly selected connection, Snowflake CLI and Cortex CLI. API
-checks consume credits; they are not part of the local unit-test commands above.
-
-The deploy wrapper checks target identity, demo markers, existing objects and
-release provenance before writes. It generates six synthetic CSVs, uploads only
-those CSVs and two runtime skills, loads tables, deploys views/specs and restores
-reader grants. Skills use content-hashed paths. Existing agents are saved and
-committed as a new live version, not dropped. This is version activation inside
-the selected account, not external publication. Omit `--reader-user` to skip a
-direct user assignment; the reader role is still granted to SYSADMIN.
-
-Rerunning deployment replaces the contents of all six dedicated synthetic tables
-within one DML transaction. It does not append duplicate observations. DDL and
-agent/grant changes are not a single transaction. A failed command stops later
-steps; fix the cause and rerun. Existing conversations can see a mixed release
-during deployment: use a quiet demo window. There is no automatic rollback.
-
-`deploy_all.sql` alone is not a complete deployment: the wrapper stages data first
-and handles skills, agent-studio and grants afterward. Do not run it directly.
-
-## Cleanup
-
-Preview the deletion scope, optionally run read-only checks, then apply:
-
-```bash
-bash teardown_all.sh --connection "$DEMO_CONNECTION" --organization "$DEMO_ORG" --account "$DEMO_ACCOUNT"
-bash teardown_all.sh --connection "$DEMO_CONNECTION" --organization "$DEMO_ORG" --account "$DEMO_ACCOUNT" --check
-bash teardown_all.sh --connection "$DEMO_CONNECTION" --organization "$DEMO_ORG" --account "$DEMO_ACCOUNT" --apply
-```
-
-Teardown removes the named agent, three semantic views, seven analytical views,
-six tables, stage and its files, file format, project schema, warehouse and reader
-role (including its assignments). It preserves the shared database and semantic
-schema, unrelated objects and local evidence. The project schema uses RESTRICT,
-not CASCADE; unexpected resources require review. Absent schemas are skipped.
-Read-only checks may resume the warehouse and consume credits. Preview makes no
-connections. No flag defaults to applying changes. Do not run concurrent lifecycle
-commands or repurpose these dedicated resources for customer data.
-
-Deploy again with the same command to restore the demo. Local files are required;
-cloud teardown does not remove the source needed for redeployment. Snowflake Time
-Travel/Fail-safe can retain dropped table storage according to account policy.
+- `docs/04-COWORK-CONTRACT.md`: grains, measures, completeness and peer matching.
+- `docs/05-COWORK-ACCEPTANCE.md`: measured results and remaining limitations.
 
 ## Development Tools
 
-CoCo uses [AGENTS.md](AGENTS.md) and `.claude/skills/` for project engineering and
-mapping rules. `tools/lifecycle.py` orchestrates Snowflake CLI and agent-studio;
-local generation and lifecycle tests use Python's standard library. Optional
-`tools/verify_cowork.py` uses PyYAML when decoding CLI YAML output. No Node.js or
-local web server is required. Credentials and account-specific evidence stay out
-of the shareable source package.
+CoCo uses [AGENTS.md](AGENTS.md) and `.claude/skills/`. Python 3.11+ is optional for
+local development tests, not required on the deployer's computer:
+
+```bash
+python3 -B -m unittest discover -s tools -p 'test_*.py'
+python3 -B tools/check_public_source.py
+```
+
+The API harnesses are opt-in command-line programs; importing them during unit
+test discovery does not call Snowflake. `tools/build_specs.py` uses agent-studio
+to regenerate tracked specs during development only. Keep its output as
+JSON-compatible YAML for the native loader. SQL parity/API checks require an
+explicit demo connection and incur credits. Do not run them against production.
 
 ## Useful Questions
 
@@ -138,32 +144,25 @@ of the shareable source package.
 - Exclude closures, then openings. How does the answer change?
 - Compare R101 and R103 breakfast labor and guest changes. What contradicts a simple labor explanation?
 - Why is R312's peer gap unavailable?
-- What would a prospective staffing test need before we could measure effectiveness or ROI?
+- What would a prospective staffing test need before effectiveness or ROI can be measured?
 
-## Limits
+## Limits And Publication
 
-Guest occasions are guests served per occasion, not checks or unique customers.
-Missing observations are not zero. Peer gaps are descriptive, not recoverable
-demand or causal effects. Loyalty, profit, real customer findings, and campaign
-execution are unavailable. Customer mappings remain proposals until definitions,
-cardinalities, reconciliation and activation are approved.
+Guest occasions are not checks or unique customers. Missing observations are not
+zero. Peer gaps are descriptive, not recoverable demand or causal effects.
+Loyalty, profit, real customer findings and campaign execution are unavailable.
+Source mappings require approved definitions and reconciliation before activation.
+Browser behavior is unverified; API invocation success is not answer acceptance.
 
-API checks are recorded separately from UI checks. CoWork browser testing is not
-claimed. See the acceptance checkpoint before presenting this as handoff-ready.
+Private plans, API traces, account configuration and customer evidence are outside
+this source directory. Follow [SECURITY.md](SECURITY.md) and review the final Git
+diff before publishing. The source scan is a safeguard, not a guarantee.
+Licensing remains a separate publication decision; no license is implied.
 
-## Publication Preparation
+## References
 
-Private execution traces, local account configuration, historical plans and build
-state are not part of this source directory. Do not add them to a public repository.
-Run the offline source scan before publishing:
-
-```bash
-python3 -B tools/check_public_source.py
-```
-
-The scan checks hidden files too and reports locations without printing matched
-values. It is a safeguard, not a guarantee or a substitute for reviewing the final
-Git diff. A repository URL is not required for sanitization. The Git-backed SQL
-deployment replacement is still pending; the commands above describe the existing
-wrapper, not the proposed replacement. Repository URL and license selection are
-deferred until publication. No public repository has been created.
+- [Git repository operations](https://docs.snowflake.com/en/developer-guide/git/git-operations)
+- [EXECUTE IMMEDIATE FROM](https://docs.snowflake.com/en/sql-reference/sql/execute-immediate-from)
+- [COPY FILES](https://docs.snowflake.com/en/sql-reference/sql/copy-files)
+- [Semantic-view YAML deployment](https://docs.snowflake.com/en/sql-reference/stored-procedures/system_create_semantic_view_from_yaml)
+- [CREATE AGENT and COPY GRANTS](https://docs.snowflake.com/en/sql-reference/sql/create-agent)

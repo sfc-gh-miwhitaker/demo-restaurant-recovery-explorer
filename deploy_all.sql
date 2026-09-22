@@ -1,6 +1,55 @@
-!source sql/01_setup.sql
+USE ROLE ACCOUNTADMIN;
+EXECUTE IMMEDIATE $$
+DECLARE
+  invalid_confirmation EXCEPTION (-20001, 'Set RR_CONFIRM to DEPLOY before deployment.');
+  invalid_target EXCEPTION (-20003, 'Set RR_EXPECTED_ACCOUNT to the intended ORGANIZATION.ACCOUNT.');
+BEGIN
+  IF ($RR_EXPECTED_ACCOUNT IS NULL OR UPPER($RR_EXPECTED_ACCOUNT) <> (CURRENT_ORGANIZATION_NAME() || '.' || CURRENT_ACCOUNT_NAME())
+      OR CURRENT_ACCOUNT_NAME() ILIKE '%SNOWHOUSE%') THEN
+    RAISE invalid_target;
+  END IF;
+  IF ($RR_CONFIRM IS NULL OR $RR_CONFIRM <> 'DEPLOY') THEN
+    RAISE invalid_confirmation;
+  END IF;
+END;
+$$;
+CREATE API INTEGRATION IF NOT EXISTS SFE_RESTAURANT_RECOVERY_GIT_API
+  API_PROVIDER = git_https_api
+  API_ALLOWED_PREFIXES = ('https://github.com/sfc-gh-miwhitaker/demo-restaurant-recovery-explorer.git')
+  ALLOWED_AUTHENTICATION_SECRETS = NONE
+  ENABLED = TRUE
+  COMMENT = 'DEMO: Public restaurant recovery source (Expires: 2026-10-22)';
+GRANT USAGE ON INTEGRATION SFE_RESTAURANT_RECOVERY_GIT_API TO ROLE SYSADMIN;
+USE ROLE SYSADMIN;
+CREATE DATABASE IF NOT EXISTS SNOWFLAKE_EXAMPLE;
+CREATE SCHEMA IF NOT EXISTS SNOWFLAKE_EXAMPLE.GIT_REPOS;
+CREATE GIT REPOSITORY IF NOT EXISTS SNOWFLAKE_EXAMPLE.GIT_REPOS.RESTAURANT_RECOVERY_REPO
+  API_INTEGRATION = SFE_RESTAURANT_RECOVERY_GIT_API
+  ORIGIN = 'https://github.com/sfc-gh-miwhitaker/demo-restaurant-recovery-explorer.git'
+  COMMENT = 'DEMO: Restaurant recovery source; preserved on teardown (Expires: 2026-10-22)';
+CREATE WAREHOUSE IF NOT EXISTS SFE_RESTAURANT_RECOVERY_WH
+  WAREHOUSE_SIZE = 'XSMALL' AUTO_SUSPEND = 60 AUTO_RESUME = TRUE
+  INITIALLY_SUSPENDED = TRUE STATEMENT_TIMEOUT_IN_SECONDS = 120
+  COMMENT = 'DEMO: Restaurant recovery compute (Expires: 2026-10-22)';
+USE WAREHOUSE SFE_RESTAURANT_RECOVERY_WH;
+ALTER GIT REPOSITORY SNOWFLAKE_EXAMPLE.GIT_REPOS.RESTAURANT_RECOVERY_REPO FETCH;
+EXECUTE IMMEDIATE $$
+DECLARE
+  revision VARCHAR;
+  statement VARCHAR;
+  invalid_revision EXCEPTION (-20002, 'Expected one main branch with a full Git commit hash.');
+BEGIN
+  SHOW GIT BRANCHES LIKE 'main' IN GIT REPOSITORY SNOWFLAKE_EXAMPLE.GIT_REPOS.RESTAURANT_RECOVERY_REPO;
+  SELECT MAX("commit_hash") INTO :revision FROM TABLE(RESULT_SCAN(LAST_QUERY_ID())) WHERE "name" = 'main';
+  IF (revision IS NULL OR NOT REGEXP_LIKE(revision, '[0-9a-f]{40}')) THEN
+    RAISE invalid_revision;
+  END IF;
+  statement := 'EXECUTE IMMEDIATE FROM @SNOWFLAKE_EXAMPLE.GIT_REPOS.RESTAURANT_RECOVERY_REPO/commits/'
+    || revision || '/sql/deploy.sql USING (revision => ''' || revision || ''')';
+  EXECUTE IMMEDIATE :statement;
+  RETURN 'Deployed restaurant recovery from commit ' || revision;
+END;
+$$;
 SELECT '2026-10-22'::DATE AS expiration_date,
        DATEDIFF(day, CURRENT_DATE(), '2026-10-22'::DATE) AS days_remaining,
        IFF(CURRENT_DATE() > '2026-10-22'::DATE, 'REVIEW DUE', 'DEMO') AS demo_status;
-!source sql/01_load.sql
-!source sql/02_analytics.sql

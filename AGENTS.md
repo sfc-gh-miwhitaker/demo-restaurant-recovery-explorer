@@ -10,6 +10,8 @@ Pair-programmed by SE Community + Cortex Code
 `sql/02_analytics.sql` owns deterministic evidence and matching.
 `tools/build_specs.py` writes tracked semantic and agent specs through agent-studio.
 `skills/` guides the business conversation; CoWork is the sole business interface.
+`bootstrap.sql` connects public Git; `deploy_all.sql` runs the pinned revision in
+Snowflake. `tools/native_runtime.py` runs there, not on the deployer's laptop.
 
 ## Project Rules
 
@@ -28,7 +30,7 @@ Pair-programmed by SE Community + Cortex Code
 ```bash
 python3 -B -m unittest discover -s tools -p 'test_cowork.py'
 python3 -B -m unittest discover -s tools -p 'test_mapping.py'
-python3 -B -m unittest discover -s tools -p 'test_lifecycle.py'
+python3 -B -m unittest discover -s tools -p 'test_native_deploy.py'
 ```
 
 Cloud checks live in `tools/verify_cowork.py`, `tools/test_agent_api.py` and

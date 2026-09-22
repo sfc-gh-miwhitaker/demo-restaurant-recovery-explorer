@@ -29,6 +29,8 @@ Nearby patterns suggest questions, but they cannot prove why people stopped comi
 
 - Business users now ask CoWork questions instead of using the former map application.
 - Deploy scripts rebuild the demonstration from its source files.
+- Snowflake fetches those files from GitHub and runs the setup inside Snowflake.
+- You do not need Python or command-line tools installed on your computer.
 - Teardown scripts remove its cloud resources while preserving shared containers.
 
 ## What to Watch Out For

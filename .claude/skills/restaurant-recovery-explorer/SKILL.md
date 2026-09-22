@@ -24,6 +24,8 @@ Cortex Agent with investigation and test-design skills -> CoWork.
 - `tools/mapping.py`: small executable mapping boundary, not a production adapter.
 - `sql/02_analytics.sql`: paired contributions, operations and frozen peers.
 - `tools/build_specs.py`: tracked semantic and agent specifications.
+- `bootstrap.sql` and `deploy_all.sql`: Git-connected, commit-pinned native deployment.
+- `tools/native_runtime.py`: caller-rights helper for generation and spec loading.
 - `skills/`: instruction-only runtime workflows.
 - `docs/05-COWORK-ACCEPTANCE.md`: validation evidence and limitations.
 
@@ -42,6 +44,7 @@ Project schema `SNOWFLAKE_EXAMPLE.RESTAURANT_RECOVERY`; warehouse
 `SFE_RESTAURANT_RECOVERY_WH`; three `SV_RESTAURANT_RECOVERY_*` semantic views in
 `SNOWFLAKE_EXAMPLE.SEMANTIC_MODELS`; project agent `RESTAURANT_RECOVERY_AGENT`.
 Reader role `SFE_RESTAURANT_RECOVERY_READER`. No account is an implicit target.
+Git clone in `SNOWFLAKE_EXAMPLE.GIT_REPOS` survives project teardown.
 
 ## Gotchas
 
@@ -50,3 +53,4 @@ Hours are all-channel denominators. Missing data is not inactivity. Similarity
 peers are not automatically experiment controls. A matched gap is not a causal
 effect. CoWork UI is unverified; do not restart browser or evaluation loops unless
 requested. The old Next.js application and v1/v2 artifacts have been removed.
+Native redeployment replaces the demo agent and resets its version history.
