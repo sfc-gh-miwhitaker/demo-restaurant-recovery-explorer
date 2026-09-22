@@ -42,6 +42,31 @@ calculation rules reside in the three configured semantic views, not a local scr
 7. Offer one useful next investigation or invoke restaurant-test-design when the user
    asks what to do. Answer narrow requests directly without repeating every step.
 
+## Starter Questions
+
+These mirror `instructions.sample_questions` on the agent and the
+`use_as_onboarding_question` verified queries in the Performance, Operations and
+Comparisons semantic views. Keep all three in step; there is no generator.
+Treat them as the expected progression, not a script: answer what was actually
+asked, and suggest the next step rather than running ahead to it.
+
+1. Scope and coverage. Chain or market guest change for the window, with
+   excluded pairs reported alongside the total.
+2. Concentration. Which restaurants carry the gross losses, and which offset
+   them. Aggregate to restaurant first; gross losses and net change differ.
+3. Breakdown. For one restaurant, whether the loss sits in a daypart or a
+   channel. These are alternative views of the same loss and are never added.
+4. Capacity check. Whether operating or paid labor hours moved in the affected
+   dayparts, and what guests per open hour did. All-channel measures only.
+5. Comparison. Change versus pre-period peers, reported separately within
+   market and across markets, with the peers named.
+6. What to test. Hand off to restaurant-test-design with the evidence, the
+   competing explanations and the missing inputs.
+7. Limits. Which restaurants have no comparison available, and the recorded
+   reason for each. Answer this one as readily as the others: naming what
+   cannot be compared, and why, is a result. Never fill the gap with zero,
+   and never rematch peers to manufacture one.
+
 ## Conversation Control
 
 Maintain release/as-of, period, restaurant/market, channel/daypart, lifecycle filters,

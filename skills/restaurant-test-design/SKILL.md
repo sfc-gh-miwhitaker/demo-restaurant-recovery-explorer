@@ -39,6 +39,28 @@ No scripts, external actions or automated experiment assignments are included.
 8. Return a prospective plan for human review. Stop before assigning units, changing
    staffing, publishing offers, sending messages or creating tasks.
 
+## Starter Questions
+
+Entered from step 6 of restaurant-investigation, or directly. The sixth entry in
+the agent's `instructions.sample_questions` -- "what should we test next, with a
+primary measure and guardrails" -- lands here; keep the two in step.
+
+1. What should we test next, given the evidence gathered so far? Requires a
+   measured signal and its counterevidence first. If the investigation has not
+   run, propose the data collection instead of a test.
+2. Which restaurants are eligible, and what is the control? Similarity peers
+   from Comparisons are candidates for review, not ready-made controls.
+3. What is the primary measure, and what guardrails protect service and labor?
+   One primary outcome, stated before launch.
+4. How long, and how many restaurants? Answerable only from baseline variance
+   and a minimum meaningful effect -- not from aggregate totals.
+5. What would make us stop? Success and stop criteria agreed in advance, not
+   chosen once results appear.
+
+Decline politely and say what is missing when asked for the profit, ROI or
+recovered guest count of a test that has not run. A descriptive peer gap is not
+a forecast of recoverable demand.
+
 ## Output
 
 Hypothesis; evidence and counterevidence; proposed intervention; eligible population;

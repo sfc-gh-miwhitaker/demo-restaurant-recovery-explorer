@@ -1,3 +1,47 @@
+-- =====================================================================
+-- 04_semantics.sql -- the three semantic views the agent queries
+--
+-- Purpose  Give Cortex Analyst a governed vocabulary over the evidence
+--          views: named dimensions, facts and metrics, with the business
+--          meaning and the traps written down next to each one.
+-- Runs     After 02_analytics.sql, because each view has a base_table that
+--          must already exist.
+-- Reads    PAIRED_PERFORMANCE, OPERATIONS_EVIDENCE, COMPARISON_EVIDENCE
+--          (the evidence layer only -- never the raw tables, so the
+--          withholding rules cannot be bypassed from above).
+--
+-- Each view is created from a JSON payload, so the teaching notes live in
+-- the payload's own "description" fields rather than in SQL comments. Read
+-- those descriptions as the contract: they are what the model sees.
+--
+-- Three payload sections are worth knowing by name:
+--   * dimensions / facts / metrics -- the vocabulary. Facts are additive
+--     columns; metrics are the aggregations that are safe to ask for. A
+--     rate exposed as a metric is computed from summed numerator and summed
+--     denominator, which is why asking for it cannot produce an average of
+--     averages.
+--   * module_custom_instructions -- per-view guidance applied when SQL is
+--     generated. This is where rules that are easy to state and easy to get
+--     wrong live: sum rates using summed denominators, never join hours to
+--     channel rows, report excluded pairs alongside totals.
+--   * verified_queries -- question/SQL pairs reviewed by a human. Those
+--     flagged use_as_onboarding_question also seed suggestions in Cortex
+--     Analyst, and they are the raw material for the curated
+--     instructions.sample_questions set on the agent in 05_agent.sql.
+--
+-- Why three views instead of one: a single wide model would let the planner
+-- join per-channel performance to all-channel hours, and the most common
+-- error in this domain -- counting one open hour once per channel -- would
+-- become reachable by accident. Splitting the model makes it unreachable.
+-- The agent's orchestration instructions then decide which view answers
+-- which question.
+-- =====================================================================
+
+-- ---------------------------------------------------------------------
+-- 1/3 Performance -- guest occasions, checks and net sales at
+--     restaurant x date x daypart x channel. The demand view: where losses
+--     sit, how they concentrate, what coverage backs the total.
+-- ---------------------------------------------------------------------
 CALL SYSTEM$CREATE_SEMANTIC_VIEW_FROM_YAML(
   'SNOWFLAKE_EXAMPLE.SEMANTIC_MODELS',
 $$
@@ -181,6 +225,14 @@ $$
 $$
 );
 
+-- ---------------------------------------------------------------------
+-- 2/3 Operations -- open hours, paid labor hours and weighted service times
+--     at restaurant x date x daypart. No channel dimension exists here, by
+--     design: the grain itself prevents allocating shared hours to a single
+--     channel. This is the capacity-side counterweight to Performance --
+--     it answers "did we reduce the opportunity?" before anyone concludes
+--     "demand fell".
+-- ---------------------------------------------------------------------
 CALL SYSTEM$CREATE_SEMANTIC_VIEW_FROM_YAML(
   'SNOWFLAKE_EXAMPLE.SEMANTIC_MODELS',
 $$
@@ -328,6 +380,13 @@ $$
 $$
 );
 
+-- ---------------------------------------------------------------------
+-- 3/3 Comparisons -- frozen pre-period peers, descriptive gaps, the
+--     sensitivity check and the reason a gap was withheld. GAP_STATUS is
+--     exposed as a first-class dimension so "why is there no comparison?"
+--     is a question with a retrievable answer, and a NULL gap can never be
+--     rendered as zero difference.
+-- ---------------------------------------------------------------------
 CALL SYSTEM$CREATE_SEMANTIC_VIEW_FROM_YAML(
   'SNOWFLAKE_EXAMPLE.SEMANTIC_MODELS',
 $$
