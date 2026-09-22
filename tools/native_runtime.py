@@ -22,6 +22,9 @@ def require_demo_object(session, kind, name, schema):
 def seed(session):
     from snowflake.snowpark.types import DateType, DecimalType
 
+    # Snowpark's overwrite write issues an unqualified DROP, so the caller-rights
+    # session needs an explicit current database and schema.
+    session.sql(f'USE SCHEMA {SCHEMA}').collect()
     tables = observations()
     validate(tables)
     for name in tables:
