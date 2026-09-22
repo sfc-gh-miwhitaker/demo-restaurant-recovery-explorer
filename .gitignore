@@ -1,0 +1,19 @@
+# Pair-programmed by SE Community + Cortex Code
+local/
+.snowflake/
+.builddemo-state.json
+.env
+.env.*
+!.env.example
+connections.toml
+config.local.*
+*.pem
+*.key
+*.p12
+*.pfx
+.venv/
+__pycache__/
+*.py[cod]
+.DS_Store
+docs/
+tools/

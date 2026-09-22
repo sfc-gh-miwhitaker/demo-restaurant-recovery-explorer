@@ -1,0 +1,22 @@
+version: 1
+artifacts:
+  - path: SV_RESTAURANT_RECOVERY_PERFORMANCE.sv.yaml
+    type: semantic_view
+    targets:
+      default:
+        object: SNOWFLAKE_EXAMPLE.SEMANTIC_MODELS.SV_RESTAURANT_RECOVERY_PERFORMANCE
+  - path: SV_RESTAURANT_RECOVERY_OPERATIONS.sv.yaml
+    type: semantic_view
+    targets:
+      default:
+        object: SNOWFLAKE_EXAMPLE.SEMANTIC_MODELS.SV_RESTAURANT_RECOVERY_OPERATIONS
+  - path: SV_RESTAURANT_RECOVERY_COMPARISONS.sv.yaml
+    type: semantic_view
+    targets:
+      default:
+        object: SNOWFLAKE_EXAMPLE.SEMANTIC_MODELS.SV_RESTAURANT_RECOVERY_COMPARISONS
+  - path: RESTAURANT_RECOVERY_AGENT.agent.yaml
+    type: cortex_agent
+    targets:
+      default:
+        object: SNOWFLAKE_EXAMPLE.RESTAURANT_RECOVERY.RESTAURANT_RECOVERY_AGENT
