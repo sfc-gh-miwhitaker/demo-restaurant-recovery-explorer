@@ -9,8 +9,8 @@ CREATE OR REPLACE PROCEDURE SNOWFLAKE_EXAMPLE.RESTAURANT_RECOVERY.SEED_DEMO()
     '@SNOWFLAKE_EXAMPLE.GIT_REPOS.RESTAURANT_RECOVERY_REPO/commits/{{ revision }}/tools/generate_cowork.py',
     '@SNOWFLAKE_EXAMPLE.GIT_REPOS.RESTAURANT_RECOVERY_REPO/commits/{{ revision }}/tools/native_runtime.py')
   HANDLER = 'native_runtime.seed'
-  EXECUTE AS CALLER
-  COMMENT = 'DEMO: Deployment-only helper; no reader grant (Expires: 2026-10-22)';
+  COMMENT = 'DEMO: Deployment-only helper; no reader grant (Expires: 2026-10-22)'
+  EXECUTE AS CALLER;
 CALL SNOWFLAKE_EXAMPLE.RESTAURANT_RECOVERY.SEED_DEMO();
 DROP PROCEDURE SNOWFLAKE_EXAMPLE.RESTAURANT_RECOVERY.SEED_DEMO();
 EXECUTE IMMEDIATE FROM './02_analytics.sql';
