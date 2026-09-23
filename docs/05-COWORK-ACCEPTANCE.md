@@ -69,8 +69,8 @@ helper access. Raw-table denial does not imply raw-file isolation.
 ## Outstanding Release Work
 
 Deployment and teardown are single self-contained Snowsight scripts, covered by
-structural tests over the entry points, the pinned-commit handoff, the collision
-guard, the transactional table replacement and its rollback path. The generator
+structural tests over the entry points, the pinned-commit handoff, the
+transactional table replacement and its rollback path. The generator
 runs unchanged inside Snowflake with temporary staging. Documentation accuracy is
 enforced by tests: every markdown link and backticked repository path in the
 entry-point documents must resolve.

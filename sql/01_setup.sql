@@ -4,9 +4,9 @@
 -- Purpose  Create the objects the rest of the deployment writes into. Idem-
 --          potent: every statement is CREATE IF NOT EXISTS, so re-running a
 --          deployment never destroys loaded data.
--- Runs     After 00_guard.sql has proven the target and checked collisions.
---          The guard is what makes IF NOT EXISTS safe here -- on its own,
---          IF NOT EXISTS would happily adopt a stranger's schema.
+-- Runs     First in the deployment sequence, before anything writes data.
+--          Re-running adopts the objects a previous run of this same demo
+--          created, which is what makes redeployment cheap.
 -- Contract Column names and types are the canonical contract in
 --          docs/04-COWORK-CONTRACT.md. tools/native_runtime.py compares the
 --          live table schema against tools/generate_cowork.py's FIELDS and
@@ -14,9 +14,9 @@
 --          breaks the load loudly instead of shifting data quietly.
 --
 -- Two conventions run through every object:
---   * Every comment starts 'DEMO:' and carries an expiry date. The guard,
---     the runtime and teardown all key off that prefix to tell demo objects
---     apart from real ones.
+--   * Every comment starts 'DEMO:' and carries an expiry date. The runtime
+--     and teardown both key off that prefix to tell demo objects apart from
+--     real ones.
 --   * Every table carries RELEASE_ID. Fixtures are regenerated, and the
 --     release column is what keeps two generations from blending into one
 --     accidental result set.

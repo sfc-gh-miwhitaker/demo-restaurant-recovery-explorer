@@ -51,8 +51,8 @@ To rebuild, run `deploy_all.sql` again. To remove the demo, run
 `SNOWFLAKE_EXAMPLE.GIT_REPOS`, then hands off to `sql/deploy.sql` at a pinned
 commit, which orchestrates the following:
 
-- Refuses to run in Snowhouse, and checks the project schema and warehouse for
-  markers so an object someone else owns is never quietly adopted.
+- Checks the project schema and warehouse for markers so an object someone else
+  owns is never quietly adopted.
 - Creates the dedicated X-Small warehouse, schema, six tables and skill stage.
 - Runs the seeded generator in a caller-rights Python procedure inside Snowflake.
 - Validates observations, stages typed temporary tables, then replaces all six

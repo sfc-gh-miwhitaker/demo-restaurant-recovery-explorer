@@ -26,18 +26,6 @@ name below is specific to this demo -- and RESTRICT on the schema drop.
 
 USE ROLE SYSADMIN;
 
--- Snowhouse is Snowflake's internal telemetry account and is never a demo
--- target, so it is never a teardown target either.
-EXECUTE IMMEDIATE $$
-DECLARE
-  invalid_target EXCEPTION (-20003, 'Snowhouse is Snowflake internal telemetry and is never a demo target.');
-BEGIN
-  IF (CURRENT_ACCOUNT_NAME() ILIKE '%SNOWHOUSE%') THEN
-    RAISE invalid_target;
-  END IF;
-END;
-$$;
-
 -- Order matters from here down: dependents before their dependencies.
 -- Helper procedures first -- they should already be gone, since deploy.sql
 -- drops SEED_DEMO immediately after use, but an interrupted deployment can

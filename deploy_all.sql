@@ -35,21 +35,7 @@ SELECT
         ELSE 'ACTIVE - ' || DATEDIFF('day', CURRENT_DATE(), '2026-10-22'::DATE) || ' days remaining'
     END AS demo_status;
 
--- 2. The one account this must never touch. Snowhouse is Snowflake's internal
---    telemetry account, so the refusal is absolute rather than a confirmation
---    someone can satisfy. Object-level collision checks run in sql/00_guard.sql
---    on the far side of the Git handoff, before any DDL.
-EXECUTE IMMEDIATE $$
-DECLARE
-  invalid_target EXCEPTION (-20003, 'Snowhouse is Snowflake internal telemetry and is never a demo target.');
-BEGIN
-  IF (CURRENT_ACCOUNT_NAME() ILIKE '%SNOWHOUSE%') THEN
-    RAISE invalid_target;
-  END IF;
-END;
-$$;
-
--- 3. Shared infrastructure, idempotent and safe to re-run. ACCOUNTADMIN is
+-- 2. Shared infrastructure, idempotent and safe to re-run. ACCOUNTADMIN is
 --    needed only for the API integration; the file drops back to SYSADMIN as
 --    soon as that is done.
 USE ROLE ACCOUNTADMIN;
@@ -92,10 +78,10 @@ CREATE WAREHOUSE IF NOT EXISTS SFE_RESTAURANT_RECOVERY_WH
   COMMENT = 'DEMO: Restaurant recovery compute (Expires: 2026-10-22)';
 USE WAREHOUSE SFE_RESTAURANT_RECOVERY_WH;
 
--- 4. Pull the current state of the remote into the clone.
+-- 3. Pull the current state of the remote into the clone.
 ALTER GIT REPOSITORY SNOWFLAKE_EXAMPLE.GIT_REPOS.RESTAURANT_RECOVERY_REPO FETCH;
 
--- 5. Resolve main to a commit hash, then run the deployment from that commit.
+-- 4. Resolve main to a commit hash, then run the deployment from that commit.
 --
 -- Why pin at all: /branches/main is a moving pointer. Reading it once and
 -- then deploying from /commits/<hash> means the SQL, the Python generator and
@@ -130,7 +116,7 @@ BEGIN
 END;
 $$;
 
--- 6. Final summary. Grant the reader role to whoever will use CoWork, then
+-- 5. Final summary. Grant the reader role to whoever will use CoWork, then
 --    select RESTAURANT_RECOVERY_AGENT there.
 SELECT 'Deployment complete!' AS status,
        CURRENT_TIMESTAMP() AS completed_at,

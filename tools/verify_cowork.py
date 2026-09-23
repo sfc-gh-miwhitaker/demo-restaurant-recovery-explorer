@@ -46,6 +46,4 @@ if __name__ == "__main__":
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--connection", required=True)
     args = parser.parse_args()
-    if args.connection.lower() == "snowhouse":
-        parser.error("Use an explicitly approved demo account, not Snowhouse")
     verify(args.connection)

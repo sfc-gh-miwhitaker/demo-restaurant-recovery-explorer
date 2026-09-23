@@ -12,7 +12,16 @@ TEXT_SUFFIXES = {".md", ".py", ".sql", ".sh", ".json", ".yaml", ".yml", ".toml",
 # Binaries a human has viewed in full and cleared for publication. Pinned by exact
 # relative path so any other binary still requires its own review.
 REVIEWED_BINARIES = {"docs/media/cowork-demo.mp4"}
+# Names of Snowflake-internal systems and accounts. A synthetic public demo has
+# no reason to reference them, and a reference leaks internal vocabulary even
+# when the surrounding code is harmless -- the guard this list replaced was a
+# safety check that named an internal telemetry account in a public file. This
+# module is the single place the words are allowed to appear, so it is exempt
+# from its own scan; tests import the pattern rather than restating the terms.
+INTERNAL_TERMS = re.compile(r"\b(?:snowhouse|sfsenorthamerica|snowflake_intelligence_internal)\b", re.I)
+SELF_EXEMPT = "tools/check_public_source.py"
 PATTERNS = {
+    "Snowflake-internal system name": INTERNAL_TERMS,
     "personal filesystem path": re.compile(r"/(?:Users|home)/[a-zA-Z0-9_.-]+/|[A-Z]:\\Users\\[a-zA-Z0-9_.-]+\\"),
     "email address": re.compile(r"\b[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Za-z]{2,}\b"),
     "Snowflake account host": re.compile(r"\b[\w.-]+\.snowflakecomputing\.com\b", re.I),
@@ -50,6 +59,8 @@ def scan(root):
             findings.append((str(relative), 0, "unreadable text requires review"))
             continue
         checked += 1
+        if relative.as_posix() == SELF_EXEMPT:
+            continue
         for line_number, line in enumerate(text.splitlines(), 1):
             for label, pattern in PATTERNS.items():
                 if pattern.search(line):

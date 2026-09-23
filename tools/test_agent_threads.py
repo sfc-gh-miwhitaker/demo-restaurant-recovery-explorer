@@ -74,8 +74,6 @@ if __name__ == "__main__":
     parser.add_argument("--connection", required=True)
     parser.add_argument("--output", required=True, type=Path)
     args = parser.parse_args()
-    if args.connection.lower() == "snowhouse":
-        parser.error("Use the approved demo account, never Snowhouse")
     args.output.mkdir(parents=True, exist_ok=True)
     for repeat in (1, 2):
         run_thread(args.connection, args.output, repeat)

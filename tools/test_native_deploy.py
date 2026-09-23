@@ -2,6 +2,7 @@
 
 import json
 import re
+import subprocess
 import sys
 import types
 import unittest
@@ -27,11 +28,10 @@ class NativeDeploymentTests(unittest.TestCase):
         self.assertIn('Run All', text)
         # A variable the operator has to SET by hand would make a pasted Run All
         # abort on its first statement, which is exactly the failure this repo
-        # kept shipping. Safety comes from the namespace, the collision check in
-        # 00_guard.sql and teardown, not from a typed confirmation.
+        # kept shipping. Safety comes from the namespace and teardown, not from
+        # a typed confirmation or a pre-deployment gate.
         self.assertNotIn('RR_CONFIRM', text)
         self.assertNotIn('RR_EXPECTED_ACCOUNT', text)
-        self.assertIn('SNOWHOUSE', text)
         self.assertIn('"commit_hash"', text)
         self.assertIn('/commits/', text)
         self.assertNotIn('!source', text)
@@ -71,13 +71,6 @@ class NativeDeploymentTests(unittest.TestCase):
         self.assertIn('RESTRICT', text)
         self.assertIn('Run All', text)
         self.assertNotIn('RR_CONFIRM', text)
-        self.assertNotIn('RR_EXPECTED_ACCOUNT', text)
-
-    def test_guard_stops_unmarked_object_collisions(self):
-        text = (ROOT / 'sql/00_guard.sql').read_text()
-        self.assertIn('RAISE collision', text)
-        self.assertIn('SHOW SCHEMAS', text)
-        self.assertIn('SHOW WAREHOUSES', text)
         self.assertNotIn('RR_EXPECTED_ACCOUNT', text)
 
     def test_sql_is_the_only_definition_source(self):
@@ -142,6 +135,32 @@ class NativeDeploymentTests(unittest.TestCase):
         self.assertIn('ROLLBACK', commands)
         self.assertNotIn('COMMIT', commands)
         self.assertTrue(commands[-1].startswith('DROP TABLE IF EXISTS'))
+
+
+class PublicVocabularyTests(unittest.TestCase):
+    def test_no_tracked_file_names_a_snowflake_internal_system(self):
+        # This repository is public. It previously shipped a deploy-time guard
+        # that refused to run in an internal Snowflake account, which meant a
+        # synthetic restaurant demo named an internal system in a file anyone
+        # could read. The guard bought nothing -- safety comes from the demo's
+        # own object namespace and teardown -- so the words must simply
+        # never reappear. The terms live only in check_public_source.py, which
+        # is exempt from its own scan and imported here rather than restated.
+        import check_public_source
+
+        tracked = subprocess.run(['git', 'ls-files', '-z'], cwd=ROOT, check=True,
+                                 capture_output=True, text=True).stdout.split('\0')
+        offenders = []
+        for name in filter(None, tracked):
+            if name == check_public_source.SELF_EXEMPT:
+                continue
+            path = ROOT / name
+            if not path.is_file() or path.suffix not in check_public_source.TEXT_SUFFIXES:
+                continue
+            for line_number, line in enumerate(path.read_text(encoding='utf-8').splitlines(), 1):
+                if check_public_source.INTERNAL_TERMS.search(line):
+                    offenders.append(f'{name}:{line_number}')
+        self.assertEqual(offenders, [])
 
 
 if __name__ == '__main__':

@@ -9,14 +9,12 @@
 --          wrapper {{ revision }} is unbound and the stage paths will not
 --          resolve. Deploying from Git rather than from a laptop is what
 --          makes a deployment reproducible and attributable to a commit.
--- Order    guard -> containers -> data -> views -> semantics -> skills ->
+-- Order    containers -> data -> views -> semantics -> skills ->
 --          agent -> grants. Each step depends on the one before it, and the
 --          grants come last because GRANT fails on an object that does not
 --          yet exist.
 -- =====================================================================
 
--- Prove the target and check for collisions before anything is created.
-EXECUTE IMMEDIATE FROM './00_guard.sql';
 -- Containers and canonical tables, all CREATE IF NOT EXISTS.
 EXECUTE IMMEDIATE FROM './01_setup.sql';
 

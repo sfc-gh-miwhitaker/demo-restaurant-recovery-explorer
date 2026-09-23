@@ -76,8 +76,6 @@ if __name__ == "__main__":
     parser.add_argument("--workers", type=int, default=3, choices=(1, 2, 3))
     parser.add_argument("--cases", nargs="*")
     args = parser.parse_args()
-    if args.connection.lower() == "snowhouse":
-        parser.error("Synthetic acceptance must target the approved demo connection")
     args.output.mkdir(parents=True, exist_ok=True)
     selected = [case for case in CASES if not args.cases or case[0] in args.cases]
     with concurrent.futures.ThreadPoolExecutor(max_workers=args.workers) as pool:
