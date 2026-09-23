@@ -11,10 +11,13 @@ to have proven a cause. No customer data is included.
 
 ## Demo Recording
 
+https://github.com/user-attachments/assets/d679edbd-72fc-4fb9-a7b6-89efe7014c0b
+
 A 2m 40s screen recording of the agent investigating fictional restaurant
-performance in CoWork: [docs/media/cowork-demo.mp4](docs/media/cowork-demo.mp4)
-(1.1 MB, H.264 640x316, no audio). The recording shows one session and is not a
-validation result. See [acceptance](docs/05-COWORK-ACCEPTANCE.md).
+performance in CoWork. The same file is committed at
+[docs/media/cowork-demo.mp4](docs/media/cowork-demo.mp4) (1.1 MB, H.264 640x316,
+no audio). The recording shows one session and is not a validation result. See
+[acceptance](docs/05-COWORK-ACCEPTANCE.md).
 
 ## Quick Start
 
