@@ -12,13 +12,9 @@ to have proven a cause. No customer data is included.
 ## Demo Recording
 
 A 2m 40s screen recording of the agent investigating fictional restaurant
-performance in CoWork: [docs/media/cowork-demo.mp4](docs/media/cowork-demo.mp4).
-
-<video src="https://github.com/sfc-gh-miwhitaker/demo-restaurant-recovery-explorer/raw/main/docs/media/cowork-demo.mp4" controls width="720"></video>
-
-GitHub's Markdown renderer does not play repository-relative video sources; use
-the link above if the player does not appear. The recording shows one session and
-is not a validation result. See [acceptance](docs/05-COWORK-ACCEPTANCE.md).
+performance in CoWork: [docs/media/cowork-demo.mp4](docs/media/cowork-demo.mp4)
+(1.1 MB, H.264 640x316, no audio). The recording shows one session and is not a
+validation result. See [acceptance](docs/05-COWORK-ACCEPTANCE.md).
 
 ## Quick Start
 
