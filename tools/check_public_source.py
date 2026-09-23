@@ -9,6 +9,9 @@ PRIVATE_NAMES = {"local", ".snowflake", ".builddemo-state.json", ".DS_Store",
                  "connections.toml", ".env", ".venv", "__pycache__"}
 PRIVATE_SUFFIXES = {".pem", ".key", ".p12", ".pfx", ".pyc", ".pyo"}
 TEXT_SUFFIXES = {".md", ".py", ".sql", ".sh", ".json", ".yaml", ".yml", ".toml", ".txt"}
+# Binaries a human has viewed in full and cleared for publication. Pinned by exact
+# relative path so any other binary still requires its own review.
+REVIEWED_BINARIES = {"docs/media/cowork-demo.mp4"}
 PATTERNS = {
     "personal filesystem path": re.compile(r"/(?:Users|home)/[a-zA-Z0-9_.-]+/|[A-Z]:\\Users\\[a-zA-Z0-9_.-]+\\"),
     "email address": re.compile(r"\b[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Za-z]{2,}\b"),
@@ -22,6 +25,7 @@ PATTERNS = {
 
 def scan(root):
     findings = []
+    notices = []
     checked = 0
     for path in sorted(root.rglob("*")):
         relative = path.relative_to(root)
@@ -35,7 +39,10 @@ def scan(root):
         if path.is_dir() or any(part in PRIVATE_NAMES for part in relative.parts[:-1]):
             continue
         if path.suffix not in TEXT_SUFFIXES and path.name not in {".gitignore", ".gitattributes", "LICENSE"}:
-            findings.append((str(relative), 0, "unrecognized file type requires review"))
+            if relative.as_posix() in REVIEWED_BINARIES:
+                notices.append((str(relative), 0, "reviewed binary (not text-scanned)"))
+            else:
+                findings.append((str(relative), 0, "unrecognized file type requires review"))
             continue
         try:
             text = path.read_text(encoding="utf-8")
@@ -47,15 +54,15 @@ def scan(root):
             for label, pattern in PATTERNS.items():
                 if pattern.search(line):
                     findings.append((str(relative), line_number, label))
-    return checked, findings
+    return checked, findings, notices
 
 
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--root", type=Path, default=Path(__file__).resolve().parents[1])
     args = parser.parse_args()
-    checked, findings = scan(args.root.resolve())
-    for path, line, label in findings:
+    checked, findings, notices = scan(args.root.resolve())
+    for path, line, label in notices + findings:
         print(f"{path}:{line}: {label}")
     print(f"Checked {checked} text files; {len(findings)} findings. No network requests made.")
     raise SystemExit(bool(findings))

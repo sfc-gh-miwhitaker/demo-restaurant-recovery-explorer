@@ -7,55 +7,52 @@ lifecycle effects, compares pre-period peers, and proposes tests without claimin
 to have proven a cause. No customer data is included.
 
 ![Expires](https://img.shields.io/badge/Expires-2026--10--22-orange)
+![License](https://img.shields.io/badge/License-Apache%202.0-blue)
+
+## Demo Recording
+
+A 2m 40s screen recording of the agent investigating fictional restaurant
+performance in CoWork: [docs/media/cowork-demo.mp4](docs/media/cowork-demo.mp4).
+
+<video src="https://github.com/sfc-gh-miwhitaker/demo-restaurant-recovery-explorer/raw/main/docs/media/cowork-demo.mp4" controls width="720"></video>
+
+GitHub's Markdown renderer does not play repository-relative video sources; use
+the link above if the player does not appear. The recording shows one session and
+is not a validation result. See [acceptance](docs/05-COWORK-ACCEPTANCE.md).
 
 ## Quick Start
 
-Deploy from a Snowsight SQL worksheet. No local Python installation, CLI, CSV
-upload or web application is required. Python generation runs inside Snowflake.
+Everything runs inside Snowflake. No local Python, CLI, CSV upload or web app.
 
-1. Choose a dedicated demo account with Cortex Agents, Cortex Analyst and Python
-   stored procedures available. The deploying administrator must be able to use
-   ACCOUNTADMIN, SYSADMIN and SECURITYADMIN. Review the SQL before running it.
-2. Run [bootstrap.sql](bootstrap.sql) once. It creates a narrowly scoped public
-   Git API integration and repository clone. No GitHub token is needed.
-3. In the same worksheet, set the intended account explicitly, then deploy:
-
-```sql
-SET RR_EXPECTED_ACCOUNT = 'YOUR_ORGANIZATION.YOUR_ACCOUNT';
-SET RR_CONFIRM = 'DEPLOY';
-EXECUTE IMMEDIATE FROM
-  @SNOWFLAKE_EXAMPLE.GIT_REPOS.RESTAURANT_RECOVERY_REPO/branches/main/deploy_all.sql;
-```
-
-The account value is a safety confirmation, not a credential. Replace it with
-your intended account name; do not compute it automatically from the session.
-Deployment fetches `main`, resolves a full commit hash, and pins all subsequent
-SQL, imports, specifications and copied skills to that revision. Run the same
-command to redeploy after merging a source change.
-
-4. Grant the reader role to your chosen user, then select
-   `RESTAURANT_RECOVERY_AGENT` in CoWork:
+1. Open a Snowsight SQL worksheet in a demo account with Cortex Agents and Cortex
+   Analyst enabled, using a role that can reach ACCOUNTADMIN and SECURITYADMIN.
+2. Copy the full contents of [deploy_all.sql](deploy_all.sql) into the worksheet
+   and click **Run All**. It creates the Git integration, fetches this repository,
+   pins a commit, and builds the whole demo from that revision. No GitHub token is
+   needed. Takes a few minutes; review the SQL before running it.
+3. Grant the reader role to whoever will use CoWork, then select
+   `RESTAURANT_RECOVERY_AGENT` there:
 
 ```sql
 USE ROLE SECURITYADMIN;
 GRANT ROLE SFE_RESTAURANT_RECOVERY_READER TO USER YOUR_USER;
 ```
 
-No user defaults or PUBLIC grants are changed. Ensure the role used by CoWork
-inherits the reader role; user default-role behavior can differ from worksheet
-role selection. [Plain-language overview](ELI5.md).
+Ensure the role CoWork runs under inherits the reader role; a user's default role
+can differ from the role selected in a worksheet. No user defaults or PUBLIC
+grants are changed. [Plain-language overview](ELI5.md).
 
-**Validation status:** the native Git deployment is newly packaged, not yet
-cloud-executed end to end. These local changes must be committed and pushed before
-Snowflake can fetch them. Prior API tests validate the analytical demo, not this
-new deployment path. See [acceptance](docs/05-COWORK-ACCEPTANCE.md).
+To rebuild, run `deploy_all.sql` again. To remove the demo, run
+[teardown_all.sql](teardown_all.sql) the same way.
 
 ## What Deployment Does
 
-`bootstrap.sql` creates the public Git integration and clone under
-`SNOWFLAKE_EXAMPLE.GIT_REPOS`. `deploy_all.sql` orchestrates the following:
+`deploy_all.sql` creates the public Git integration and clone under
+`SNOWFLAKE_EXAMPLE.GIT_REPOS`, then hands off to `sql/deploy.sql` at a pinned
+commit, which orchestrates the following:
 
-- Checks explicit account confirmation and project schema/warehouse markers.
+- Refuses to run in Snowhouse, and checks the project schema and warehouse for
+  markers so an object someone else owns is never quietly adopted.
 - Creates the dedicated X-Small warehouse, schema, six tables and skill stage.
 - Runs the seeded generator in a caller-rights Python procedure inside Snowflake.
 - Validates observations, stages typed temporary tables, then replaces all six
@@ -64,6 +61,11 @@ new deployment path. See [acceptance](docs/05-COWORK-ACCEPTANCE.md).
 - Copies only two runtime SKILL.md files into commit-specific stage directories.
 - Creates or replaces the demo agent with COPY GRANTS and restores reader grants.
 - Removes the deployment-only helper procedure after successful deployment.
+
+Deployment resolves `main` to a full commit hash and pins all subsequent SQL,
+imports, specifications and copied skills to that revision, so every object in
+the account traces to one commit. Unpushed local edits will not appear in the
+account.
 
 The release has 36 fictional restaurants, 728 dates, four dayparts and three
 channels. Its fixed as-of date is 2026-09-14, independent of today's date.
@@ -78,14 +80,7 @@ that someone has not manually altered a table.
 
 ## Remove And Rebuild
 
-Use a worksheet in the intended account:
-
-```sql
-SET RR_EXPECTED_ACCOUNT = 'YOUR_ORGANIZATION.YOUR_ACCOUNT';
-SET RR_CONFIRM = 'TEARDOWN';
-EXECUTE IMMEDIATE FROM
-  @SNOWFLAKE_EXAMPLE.GIT_REPOS.RESTAURANT_RECOVERY_REPO/branches/main/teardown_all.sql;
-```
+Copy [teardown_all.sql](teardown_all.sql) into a worksheet and click **Run All**.
 
 Teardown removes exact named project objects, its stage contents, warehouse and
 reader role (including assignments). It preserves the shared database, shared
@@ -94,33 +89,37 @@ The project schema uses RESTRICT, not CASCADE. An unexpected dependent object
 can stop teardown after earlier drops; investigate instead of broadening deletion.
 The legacy CSV format is included in cleanup for earlier installations.
 
-To rebuild, set `RR_CONFIRM = 'DEPLOY'` and rerun the deployment command. To fetch
-updated entry-point scripts before either operation:
+To rebuild, run `deploy_all.sql` again. To fetch updated entry-point scripts
+without a full redeployment:
 
 ```sql
 USE ROLE SYSADMIN;
 ALTER GIT REPOSITORY SNOWFLAKE_EXAMPLE.GIT_REPOS.RESTAURANT_RECOVERY_REPO FETCH;
 ```
 
-Keep bootstrap resources unless retiring the source connection too. Dropped table
-storage can remain under Time Travel/Fail-safe. Warehouse auto-suspend does not
-cap Cortex service spend; generation, querying, AI and file copies consume credits.
+Keep the Git integration and clone unless retiring the source connection too.
+Dropped table storage can remain under Time Travel/Fail-safe. Warehouse
+auto-suspend does not cap Cortex service spend; generation, querying, AI and file
+copies consume credits.
 
 ## Architecture And Files
 
 Seeded observations -> canonical tables -> deterministic SQL evidence -> semantic
 views -> skill-guided Cortex Agent -> CoWork.
 
-- `bootstrap.sql`: one-time public Git integration and clone.
-- `deploy_all.sql` / `teardown_all.sql`: worksheet lifecycle entry points.
+- `deploy_all.sql` / `teardown_all.sql`: worksheet lifecycle entry points, each
+  self-contained and run with Snowsight's Run All.
 - `sql/deploy.sql`: commit-pinned setup, generation, views, skills and access.
+- `sql/04_semantics.sql` / `sql/05_agent.sql`: the only source of the semantic
+  view and agent specifications, inline as JSON-compatible payloads.
 - `tools/native_runtime.py`: Snowflake-executed generation and spec deployment.
 - `tools/generate_cowork.py`: reproducible fictional observations and validation.
-- `cortex_project/`: JSON-compatible YAML semantic and agent specs.
 - `skills/`: runtime investigation and prospective test-design workflows.
 - `.claude/skills/`: project engineering and source-mapping workflows.
 - `docs/04-COWORK-CONTRACT.md`: grains, measures, completeness and peer matching.
 - `docs/05-COWORK-ACCEPTANCE.md`: measured results and remaining limitations.
+- `docs/06-DATA-MODEL-DIAGRAMS.md`: grain, lineage, withholding and mapping diagrams.
+- `docs/media/cowork-demo.mp4`: screen recording of one CoWork investigation session.
 
 ## Development Tools
 
@@ -133,10 +132,10 @@ python3 -B tools/check_public_source.py
 ```
 
 The API harnesses are opt-in command-line programs; importing them during unit
-test discovery does not call Snowflake. `tools/build_specs.py` uses agent-studio
-to regenerate tracked specs during development only. Keep its output as
-JSON-compatible YAML for the native loader. SQL parity/API checks require an
-explicit demo connection and incur credits. Do not run them against production.
+test discovery does not call Snowflake. Semantic view and agent specifications are
+edited directly in `sql/04_semantics.sql` and `sql/05_agent.sql`; there is no
+separate spec-generation step. SQL parity/API checks require an explicit demo
+connection and incur credits. Do not run them against production.
 
 ## Useful Questions
 
@@ -157,7 +156,10 @@ Browser behavior is unverified; API invocation success is not answer acceptance.
 Private plans, API traces, account configuration and customer evidence are outside
 this source directory. Follow [SECURITY.md](SECURITY.md) and review the final Git
 diff before publishing. The source scan is a safeguard, not a guarantee.
-Licensing remains a separate publication decision; no license is implied.
+
+## License
+
+Licensed under the Apache License 2.0. See [LICENSE](LICENSE).
 
 ## References
 

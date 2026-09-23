@@ -22,13 +22,29 @@ class NativeDeploymentTests(unittest.TestCase):
         self.assertFalse((ROOT / 'bootstrap.sql').exists())
         self.assertNotIn("EXECUTE IMMEDIATE FROM './", text)
 
-    def test_entrypoint_pins_commit_before_nested_execution(self):
+    def test_deploy_runs_with_run_all_and_no_operator_variables(self):
         text = (ROOT / 'deploy_all.sql').read_text()
+        self.assertIn('Run All', text)
+        # A variable the operator has to SET by hand would make a pasted Run All
+        # abort on its first statement, which is exactly the failure this repo
+        # kept shipping. Safety comes from the namespace, the collision check in
+        # 00_guard.sql and teardown, not from a typed confirmation.
+        self.assertNotIn('RR_CONFIRM', text)
+        self.assertNotIn('RR_EXPECTED_ACCOUNT', text)
+        self.assertIn('SNOWHOUSE', text)
         self.assertIn('"commit_hash"', text)
         self.assertIn('/commits/', text)
-        self.assertIn('RR_CONFIRM', text)
         self.assertNotIn('!source', text)
         self.assertLess(text.index('USE WAREHOUSE'), text.index('SHOW GIT BRANCHES'))
+
+    def test_warehouse_timeout_survives_the_seeding_statement(self):
+        # The seed procedure builds and loads roughly 420,000 rows in one
+        # statement. A short account-style timeout aborts it mid-transaction and
+        # looks like a broken repository to whoever pasted the file.
+        text = (ROOT / 'deploy_all.sql').read_text()
+        timeout = re.search(r'STATEMENT_TIMEOUT_IN_SECONDS = (\d+)', text)
+        self.assertIsNotNone(timeout)
+        self.assertGreaterEqual(int(timeout[1]), 1800)
 
     def test_relative_includes_resolve(self):
         import re
@@ -46,21 +62,23 @@ class NativeDeploymentTests(unittest.TestCase):
         self.assertEqual(text.count("FILES = ('SKILL.md')"), 2)
         self.assertNotIn('PUT ', text)
 
-    def test_teardown_preserves_bootstrap(self):
+    def test_teardown_preserves_shared_infrastructure(self):
         text = (ROOT / 'teardown_all.sql').read_text()
         self.assertNotIn('DROP DATABASE', text)
         self.assertNotIn('DROP GIT REPOSITORY', text)
         self.assertNotIn('DROP API INTEGRATION', text)
         self.assertNotIn('CASCADE', text)
         self.assertIn('RESTRICT', text)
-        self.assertIn("RR_CONFIRM <> 'TEARDOWN'", text)
+        self.assertIn('Run All', text)
+        self.assertNotIn('RR_CONFIRM', text)
+        self.assertNotIn('RR_EXPECTED_ACCOUNT', text)
 
-    def test_target_guard_requires_explicit_account(self):
+    def test_guard_stops_unmarked_object_collisions(self):
         text = (ROOT / 'sql/00_guard.sql').read_text()
-        self.assertIn('$RR_EXPECTED_ACCOUNT', text)
-        self.assertIn('CURRENT_ORGANIZATION_NAME()', text)
-        self.assertIn('CURRENT_ACCOUNT_NAME()', text)
         self.assertIn('RAISE collision', text)
+        self.assertIn('SHOW SCHEMAS', text)
+        self.assertIn('SHOW WAREHOUSES', text)
+        self.assertNotIn('RR_EXPECTED_ACCOUNT', text)
 
     def test_sql_is_the_only_definition_source(self):
         text = (ROOT / 'sql/04_semantics.sql').read_text()

@@ -1,48 +1,58 @@
--- =====================================================================
--- deploy_all.sql -- the one entry point an operator runs
---
--- Purpose  Connect the account to the public Git repository, then hand off
---          to sql/deploy.sql at a pinned commit. This file is the only part
---          of the deployment that is pasted in by hand; everything after it
---          runs from source inside Snowflake.
--- Run in   A Snowsight worksheet, as a role that can reach ACCOUNTADMIN.
--- Inputs   Set both before running, as SQL variables:
---            RR_EXPECTED_ACCOUNT = 'MYORG.MYACCOUNT'   -- the intended target
---            RR_CONFIRM          = 'DEPLOY'            -- explicit consent
--- Creates  An API integration and Git repository (kept on teardown), the
---          warehouse, then everything in sql/deploy.sql.
--- Note     It deploys whatever is on the repository's main branch right now.
---          Local edits that have not been pushed will not appear in the
---          account, and redeploying replaces the agent, which resets its
---          version history.
--- =====================================================================
+/*==============================================================================
+DEPLOY ALL - Restaurant Recovery Explorer
+Pair-programmed by SE Community + Cortex Code | Expires: 2026-10-22
+INSTRUCTIONS: Open in Snowsight -> Click "Run All"
 
--- ACCOUNTADMIN is needed only for the API integration; the file drops back to
--- SYSADMIN as soon as that is done, and every object the demo owns is created
--- as SYSADMIN.
-USE ROLE ACCOUNTADMIN;
+Creates   SNOWFLAKE_EXAMPLE.RESTAURANT_RECOVERY (six tables, seven views), the
+          SFE_RESTAURANT_RECOVERY_WH warehouse, three SV_RESTAURANT_RECOVERY_*
+          semantic views, RESTAURANT_RECOVERY_AGENT, and the
+          SFE_RESTAURANT_RECOVERY_READER role. Also creates a single-repository
+          Git API integration and clone, both kept on teardown.
+Requires  A demo account with Cortex Agents and Cortex Analyst enabled, run by a
+          role that can reach ACCOUNTADMIN (API integration only) and
+          SECURITYADMIN (reader role). Everything the demo owns is SYSADMIN's.
+Remove    Run teardown_all.sql the same way.
 
--- Two independent confirmations, both supplied by the operator. Neither is
--- inferred from the session: a deployment should be something a person chose,
--- not something that followed from whichever connection happened to be open.
+This file is the only part pasted in by hand; everything after the Git handoff
+runs from pinned source inside Snowflake. It deploys whatever is on the
+repository's main branch right now, so unpushed local edits will not appear in
+the account, and redeploying replaces the agent, which resets its version
+history. Nothing here is atomic across the whole sequence: on failure, read the
+error, fix the cause and run it again.
+==============================================================================*/
+
+-- 1. Expiration check. Informational only: a stale demo announces itself in the
+--    Run All output rather than refusing to deploy.
+SELECT
+    '2026-10-22'::DATE AS expiration_date,
+    CURRENT_DATE() AS current_date,
+    DATEDIFF('day', CURRENT_DATE(), '2026-10-22'::DATE) AS days_remaining,
+    CASE
+        WHEN DATEDIFF('day', CURRENT_DATE(), '2026-10-22'::DATE) < 0
+        THEN 'EXPIRED - Code may use outdated syntax. Remove expiration banner to continue.'
+        WHEN DATEDIFF('day', CURRENT_DATE(), '2026-10-22'::DATE) <= 7
+        THEN 'EXPIRING SOON - ' || DATEDIFF('day', CURRENT_DATE(), '2026-10-22'::DATE) || ' days remaining'
+        ELSE 'ACTIVE - ' || DATEDIFF('day', CURRENT_DATE(), '2026-10-22'::DATE) || ' days remaining'
+    END AS demo_status;
+
+-- 2. The one account this must never touch. Snowhouse is Snowflake's internal
+--    telemetry account, so the refusal is absolute rather than a confirmation
+--    someone can satisfy. Object-level collision checks run in sql/00_guard.sql
+--    on the far side of the Git handoff, before any DDL.
 EXECUTE IMMEDIATE $$
 DECLARE
-  invalid_confirmation EXCEPTION (-20001, 'Set RR_CONFIRM to DEPLOY before deployment.');
-  invalid_target EXCEPTION (-20003, 'Set RR_EXPECTED_ACCOUNT to the intended ORGANIZATION.ACCOUNT.');
+  invalid_target EXCEPTION (-20003, 'Snowhouse is Snowflake internal telemetry and is never a demo target.');
 BEGIN
-  -- The named target must match this session exactly, and Snowhouse is
-  -- refused outright -- it is Snowflake's internal telemetry account, never
-  -- a demo target. sql/00_guard.sql repeats this check on the far side of
-  -- the Git handoff, where it also looks for object collisions.
-  IF ($RR_EXPECTED_ACCOUNT IS NULL OR UPPER($RR_EXPECTED_ACCOUNT) <> (CURRENT_ORGANIZATION_NAME() || '.' || CURRENT_ACCOUNT_NAME())
-      OR CURRENT_ACCOUNT_NAME() ILIKE '%SNOWHOUSE%') THEN
+  IF (CURRENT_ACCOUNT_NAME() ILIKE '%SNOWHOUSE%') THEN
     RAISE invalid_target;
-  END IF;
-  IF ($RR_CONFIRM IS NULL OR $RR_CONFIRM <> 'DEPLOY') THEN
-    RAISE invalid_confirmation;
   END IF;
 END;
 $$;
+
+-- 3. Shared infrastructure, idempotent and safe to re-run. ACCOUNTADMIN is
+--    needed only for the API integration; the file drops back to SYSADMIN as
+--    soon as that is done.
+USE ROLE ACCOUNTADMIN;
 
 -- Outbound access to exactly one repository. The prefix allowlist is the
 -- security boundary: this integration cannot be reused to fetch code from
@@ -73,16 +83,19 @@ CREATE GIT REPOSITORY IF NOT EXISTS SNOWFLAKE_EXAMPLE.GIT_REPOS.RESTAURANT_RECOV
 -- deployment script itself need compute before 01_setup.sql runs. Identical
 -- definition in both places, and CREATE IF NOT EXISTS makes the second a
 -- no-op.
+-- STATEMENT_TIMEOUT_IN_SECONDS is deliberately generous: the seeding procedure
+-- builds and loads roughly 420,000 rows in one Python statement, which is a
+-- single long-running statement on an XSMALL, not a runaway query.
 CREATE WAREHOUSE IF NOT EXISTS SFE_RESTAURANT_RECOVERY_WH
   WAREHOUSE_SIZE = 'XSMALL' AUTO_SUSPEND = 60 AUTO_RESUME = TRUE
-  INITIALLY_SUSPENDED = TRUE STATEMENT_TIMEOUT_IN_SECONDS = 120
+  INITIALLY_SUSPENDED = TRUE STATEMENT_TIMEOUT_IN_SECONDS = 3600
   COMMENT = 'DEMO: Restaurant recovery compute (Expires: 2026-10-22)';
 USE WAREHOUSE SFE_RESTAURANT_RECOVERY_WH;
 
--- Pull the current state of the remote into the clone.
+-- 4. Pull the current state of the remote into the clone.
 ALTER GIT REPOSITORY SNOWFLAKE_EXAMPLE.GIT_REPOS.RESTAURANT_RECOVERY_REPO FETCH;
 
--- Resolve main to a commit hash, then run the deployment from that commit.
+-- 5. Resolve main to a commit hash, then run the deployment from that commit.
 --
 -- Why pin at all: /branches/main is a moving pointer. Reading it once and
 -- then deploying from /commits/<hash> means the SQL, the Python generator and
@@ -117,9 +130,8 @@ BEGIN
 END;
 $$;
 
--- Demo objects should not outlive their review date. This final select makes
--- the expiry visible in the deployment output rather than leaving it buried
--- in object comments, so a stale demo announces itself when redeployed.
-SELECT '2026-10-22'::DATE AS expiration_date,
-       DATEDIFF(day, CURRENT_DATE(), '2026-10-22'::DATE) AS days_remaining,
-       IFF(CURRENT_DATE() > '2026-10-22'::DATE, 'REVIEW DUE', 'DEMO') AS demo_status;
+-- 6. Final summary. Grant the reader role to whoever will use CoWork, then
+--    select RESTAURANT_RECOVERY_AGENT there.
+SELECT 'Deployment complete!' AS status,
+       CURRENT_TIMESTAMP() AS completed_at,
+       'GRANT ROLE SFE_RESTAURANT_RECOVERY_READER TO USER <your_user>; -- as SECURITYADMIN' AS next_step;

@@ -8,10 +8,21 @@ Pair-programmed by SE Community + Cortex Code
 
 `tools/generate_cowork.py` produces fictional daily observations.
 `sql/02_analytics.sql` owns deterministic evidence and matching.
-`tools/build_specs.py` writes tracked semantic and agent specs through agent-studio.
+`sql/04_semantics.sql` and `sql/05_agent.sql` are the only source of the semantic
+view and agent specifications; edit them directly, with agent-studio guidance.
 `skills/` guides the business conversation; CoWork is the sole business interface.
-`bootstrap.sql` connects public Git; `deploy_all.sql` runs the pinned revision in
-Snowflake. `tools/native_runtime.py` runs there, not on the deployer's laptop.
+`deploy_all.sql` connects public Git, pins a commit and runs the whole deployment
+from that revision; `teardown_all.sql` reverses it. Both are pasted into a
+Snowsight worksheet and run with Run All, with no variables to set first.
+`tools/native_runtime.py` runs there, not on the deployer's laptop.
+
+## Visiting From Another Repository?
+
+This is a synthetic reference demo, Apache 2.0 licensed. To stand it up, copy
+`deploy_all.sql` into a Snowsight worksheet and click Run All -- see the README
+Quick Start. Before mapping any real restaurant source onto this contract, load
+the `restaurant-source-mapping` skill; do not infer customer semantics from
+column names. The rules below are for anyone editing this repository.
 
 ## Project Rules
 

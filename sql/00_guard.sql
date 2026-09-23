@@ -1,35 +1,25 @@
 -- =====================================================================
--- 00_guard.sql -- pre-deployment safety gate
+-- 00_guard.sql -- pre-deployment collision gate
 --
--- Purpose  Refuse to deploy anywhere the operator did not explicitly name,
---          and refuse to overwrite objects that are not this demo.
+-- Purpose  Refuse to overwrite objects that are not this demo.
 -- Runs     First, before any DDL in 01_setup.sql.
--- Inputs   RR_EXPECTED_ACCOUNT -- the intended ORGANIZATION.ACCOUNT, passed
---          in by the operator. It is compared against the session, never
---          derived from it.
--- Fails    -20003 wrong or unnamed target; -20004 object name collision.
+-- Fails    -20004 object name collision.
 --
--- Why an explicit target rather than "wherever I am connected": a demo
--- deployment creates a schema, a warehouse, a role and an agent under
--- well-known names. Getting that into the wrong account is the expensive
--- mistake, and the active connection is the easiest thing to be wrong
--- about. Requiring the operator to type the account turns a silent
--- accident into a deliberate act.
+-- Why a collision check rather than an operator-typed account confirmation:
+-- deploy_all.sql is meant to be pasted into a worksheet and run with one
+-- click, so a gate that requires a hand-typed variable would fail every
+-- first-time deployment by design. What actually needs protecting is not the
+-- choice of account -- every object here is namespaced under SNOWFLAKE_EXAMPLE
+-- with SFE_ prefixes and demo comments, and teardown_all.sql reverses it --
+-- but the possibility that something else already owns one of these names.
+-- 01_setup.sql uses CREATE IF NOT EXISTS, which would quietly adopt whatever
+-- it found, so that is the case worth stopping.
 -- =====================================================================
 EXECUTE IMMEDIATE $$
 DECLARE
-  invalid_target EXCEPTION (-20003, 'Target mismatch. Set RR_EXPECTED_ACCOUNT to the intended ORGANIZATION.ACCOUNT; do not derive it automatically.');
   collision EXCEPTION (-20004, 'Existing project schema or warehouse is not marked as this demo. Review ownership before continuing.');
   matches INTEGER;
 BEGIN
-  -- Three ways to fail the target test: the operator named nothing, the name
-  -- does not match this session, or the session is Snowhouse. The Snowhouse
-  -- exclusion is absolute -- it is Snowflake's internal telemetry account and
-  -- is never a demo target, even if someone names it deliberately.
-  IF ($RR_EXPECTED_ACCOUNT IS NULL OR UPPER($RR_EXPECTED_ACCOUNT) <> (CURRENT_ORGANIZATION_NAME() || '.' || CURRENT_ACCOUNT_NAME())
-      OR CURRENT_ACCOUNT_NAME() ILIKE '%SNOWHOUSE%') THEN
-    RAISE invalid_target;
-  END IF;
   -- Collision test. The schema name is generic enough that something else
   -- could already own it, and 01_setup.sql uses CREATE IF NOT EXISTS, which
   -- would quietly adopt whatever it found. So: if an object of this name

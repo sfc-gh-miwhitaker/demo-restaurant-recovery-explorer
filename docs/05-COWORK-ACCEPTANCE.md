@@ -76,9 +76,8 @@ transactional table replacement. No native Git deployment, live teardown/redeplo
 round-trip, or forced transaction-failure cloud test has been run yet. Earlier
 read-only preflight results belong to the removed wrapper, not the native path.
 
-See `docs/06-APPLYRULES-AUDIT.md` for the compliance audit. Customer mapping annex,
-production-source validation, licensing and publication review remain open.
-The source has a configured GitHub origin. This native-deployment change has not
-been committed or pushed by the assistant. No customer execution or browser
-acceptance is claimed. The directory contains generic source and validation
-summaries, not private execution evidence or the old map application.
+Customer mapping annex and production-source validation remain open. The source is
+Apache 2.0 licensed. The source has a configured GitHub origin. No customer
+execution or browser acceptance is claimed. The directory contains generic source
+and validation summaries, not private execution evidence or the old map
+application.

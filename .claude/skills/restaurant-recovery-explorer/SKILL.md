@@ -23,8 +23,10 @@ Cortex Agent with investigation and test-design skills -> CoWork.
 - `tools/generate_cowork.py`: reproducible v3 fictional observations.
 - `tools/mapping.py`: small executable mapping boundary, not a production adapter.
 - `sql/02_analytics.sql`: paired contributions, operations and frozen peers.
-- `tools/build_specs.py`: tracked semantic and agent specifications.
-- `bootstrap.sql` and `deploy_all.sql`: Git-connected, commit-pinned native deployment.
+- `sql/04_semantics.sql` and `sql/05_agent.sql`: inline semantic view and agent
+  specifications, the only source for both.
+- `deploy_all.sql` and `teardown_all.sql`: self-contained Run All entry points;
+  deployment connects Git and pins a commit before running anything.
 - `tools/native_runtime.py`: caller-rights helper for generation and spec loading.
 - `skills/`: instruction-only runtime workflows.
 - `docs/05-COWORK-ACCEPTANCE.md`: validation evidence and limitations.

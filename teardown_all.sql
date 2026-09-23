@@ -1,37 +1,40 @@
--- =====================================================================
--- teardown_all.sql -- remove the demo, leave the shared containers
---
--- Purpose  Drop everything deploy_all.sql created for this project, in
---          reverse dependency order, so no orphaned object is left holding
---          a grant or a warehouse.
--- Run in   A Snowsight worksheet, as a role that can reach SECURITYADMIN.
--- Inputs   RR_EXPECTED_ACCOUNT = 'MYORG.MYACCOUNT'
---          RR_CONFIRM          = 'TEARDOWN'   -- a different word from
---                                             -- DEPLOY, deliberately: the
---                                             -- two scripts must never be
---                                             -- runnable from one setting.
--- Kept     SNOWFLAKE_EXAMPLE, SEMANTIC_MODELS and GIT_REPOS are shared with
---          other demos and are never dropped here. The Git clone survives
---          too, so redeployment does not need the API integration rebuilt.
---
--- Every statement is IF EXISTS, so a partial deployment tears down cleanly
--- and the script is safe to re-run. It includes a few objects from earlier
--- versions of this project (DEPLOY_ASSETS, CSV_INPUT) so that an account
--- deployed from an older revision still ends up empty.
--- =====================================================================
+/*==============================================================================
+TEARDOWN ALL - Restaurant Recovery Explorer
+Pair-programmed by SE Community + Cortex Code | Expires: 2026-10-22
+INSTRUCTIONS: Open in Snowsight -> Click "Run All"
+
+Drops     The RESTAURANT_RECOVERY schema and everything in it, the three
+          SV_RESTAURANT_RECOVERY_* semantic views, RESTAURANT_RECOVERY_AGENT,
+          SFE_RESTAURANT_RECOVERY_WH, and the SFE_RESTAURANT_RECOVERY_READER
+          role including its assignments.
+Keeps     SNOWFLAKE_EXAMPLE, SEMANTIC_MODELS and GIT_REPOS are shared with other
+          demos and are never dropped here. The Git clone and API integration
+          survive too, so redeploying does not have to rebuild them.
+Requires  A role that can reach SYSADMIN and SECURITYADMIN.
+Rebuild   Run deploy_all.sql again.
+
+Every statement is IF EXISTS, so a partial deployment tears down cleanly and the
+script is safe to re-run. It includes a few objects from earlier versions of
+this project (DEPLOY_ASSETS, CSV_INPUT) so that an account deployed from an
+older revision still ends up empty. Dropped table storage can remain under Time
+Travel and Fail-safe.
+
+There is no confirmation prompt: opening this file and clicking Run All is the
+confirmation. What protects other people's work is the object namespace -- every
+name below is specific to this demo -- and RESTRICT on the schema drop.
+==============================================================================*/
 
 USE ROLE SYSADMIN;
--- Same two-part confirmation as deployment. Teardown is the more destructive
--- of the two, and the target check is what stops a copied worksheet from
--- dropping objects in the wrong account.
+
+-- Snowhouse is Snowflake's internal telemetry account and is never a demo
+-- target, so it is never a teardown target either.
 EXECUTE IMMEDIATE $$
 DECLARE
-  invalid_confirmation EXCEPTION (-20005, 'Set RR_CONFIRM to TEARDOWN before removing the demo.');
-  invalid_target EXCEPTION (-20003, 'Target mismatch. Set RR_EXPECTED_ACCOUNT to the intended ORGANIZATION.ACCOUNT.');
+  invalid_target EXCEPTION (-20003, 'Snowhouse is Snowflake internal telemetry and is never a demo target.');
 BEGIN
-  IF ($RR_EXPECTED_ACCOUNT IS NULL OR UPPER($RR_EXPECTED_ACCOUNT) <> (CURRENT_ORGANIZATION_NAME() || '.' || CURRENT_ACCOUNT_NAME())
-      OR CURRENT_ACCOUNT_NAME() ILIKE '%SNOWHOUSE%') THEN RAISE invalid_target; END IF;
-  IF ($RR_CONFIRM IS NULL OR $RR_CONFIRM <> 'TEARDOWN') THEN RAISE invalid_confirmation; END IF;
+  IF (CURRENT_ACCOUNT_NAME() ILIKE '%SNOWHOUSE%') THEN
+    RAISE invalid_target;
+  END IF;
 END;
 $$;
 
@@ -75,3 +78,7 @@ DROP WAREHOUSE IF EXISTS SFE_RESTAURANT_RECOVERY_WH;
 -- because dropping it earlier would revoke access mid-teardown.
 USE ROLE SECURITYADMIN;
 DROP ROLE IF EXISTS SFE_RESTAURANT_RECOVERY_READER;
+
+SELECT 'Teardown complete!' AS status,
+       CURRENT_TIMESTAMP() AS completed_at,
+       'SNOWFLAKE_EXAMPLE, SEMANTIC_MODELS, GIT_REPOS and the Git integration were preserved.' AS preserved;

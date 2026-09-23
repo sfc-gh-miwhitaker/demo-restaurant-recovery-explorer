@@ -4,7 +4,7 @@
 -- Purpose  Execute the whole deployment in dependency order from one
 --          Git commit, so every object in the account comes from the same
 --          revision of the source.
--- Called   By bootstrap.sql, which resolves main's commit hash and passes it
+-- Called   By deploy_all.sql, which resolves main's commit hash and passes it
 --          as :revision. Not intended to be run by hand: outside that
 --          wrapper {{ revision }} is unbound and the stage paths will not
 --          resolve. Deploying from Git rather than from a laptop is what
