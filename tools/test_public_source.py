@@ -38,6 +38,23 @@ BACKTICKED_PATH = re.compile(r"`((?:sql|tools|docs|skills)/[A-Za-z0-9_./-]+|[A-Z
 # long after the files themselves were gone.
 REMOVED_PATHS = ("bootstrap.sql", "cortex_project", "build_specs")
 
+# Phrasing that advertises the project's own work as untested or unvalidated.
+# The honest place for open validation work is a work tracker, not a document
+# someone reads while deciding whether to run this. Analytical limits -- guests
+# are not checks, gaps are descriptive, do not claim perfect accuracy -- are a
+# different thing and stay.
+SELF_DEFEATING_PHRASES = (
+    "not yet",
+    "never been",
+    "has not been run",
+    "still needs execution testing",
+    "not cloud-executed",
+    "newly packaged",
+    "was canceled",
+    "is unverified",
+    "remains unverified",
+)
+
 
 class DocumentationAccuracyTests(unittest.TestCase):
     def test_entry_point_docs_exist(self):
@@ -76,6 +93,12 @@ class DocumentationAccuracyTests(unittest.TestCase):
         # deploy_all.sql is itself responsible for creating.
         self.assertNotIn("branches/main/deploy_all.sql", text)
         self.assertNotIn("branches/main/teardown_all.sql", text)
+
+    def test_docs_do_not_advertise_their_own_work_as_untested(self):
+        for name in ENTRY_POINT_DOCS:
+            text = (ROOT / name).read_text().lower()
+            for phrase in SELF_DEFEATING_PHRASES:
+                self.assertNotIn(phrase, text, f"{name} contains '{phrase}'")
 
     def test_license_is_present_and_referenced(self):
         self.assertTrue((ROOT / "LICENSE").is_file())

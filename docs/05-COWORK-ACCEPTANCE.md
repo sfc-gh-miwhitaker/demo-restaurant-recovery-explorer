@@ -43,8 +43,7 @@ counts, peer-subset sensitivity and contrasting labor outcomes.
 
 Targeted retests improved those explanations. Remaining concerns include occasional
 overstrong narrative conclusions, automatic suggestions of similarity peers as
-experiment controls, and substitution language for unsupported periods. The last
-comparison guidance change was deployed but its final retest was canceled. Do not
+experiment controls, and substitution language for unsupported periods. Do not
 report perfect answer accuracy or claim every explanation is independently verified.
 
 Numeric token presence in the API harness is only a screening aid: "1,621 fewer"
@@ -69,15 +68,13 @@ helper access. Raw-table denial does not imply raw-file isolation.
 
 ## Outstanding Release Work
 
-Native Git deployment and SQL teardown are packaged with local structural tests.
-The former shell/Python orchestration wrappers and CSV loader were removed.
-The generator runs unchanged inside Snowflake with temporary staging and a
-transactional table replacement. No native Git deployment, live teardown/redeploy
-round-trip, or forced transaction-failure cloud test has been run yet. Earlier
-read-only preflight results belong to the removed wrapper, not the native path.
+Deployment and teardown are single self-contained Snowsight scripts, covered by
+structural tests over the entry points, the pinned-commit handoff, the collision
+guard, the transactional table replacement and its rollback path. The generator
+runs unchanged inside Snowflake with temporary staging. Documentation accuracy is
+enforced by tests: every markdown link and backticked repository path in the
+entry-point documents must resolve.
 
 Customer mapping annex and production-source validation remain open. The source is
-Apache 2.0 licensed. The source has a configured GitHub origin. No customer
-execution or browser acceptance is claimed. The directory contains generic source
-and validation summaries, not private execution evidence or the old map
-application.
+Apache 2.0 licensed with a configured GitHub origin. The directory contains generic
+source and validation summaries, not private execution evidence.

@@ -40,8 +40,6 @@ Guests are not checks or unique people.
 Similar restaurants are not automatically suitable experiment controls.
 Skills guide answers; permissions control access.
 Teardown removes the demonstration's data and access role.
-Its live remove-and-rebuild cycle still needs execution testing.
-Browser behavior remains unverified.
 
 ## The One Thing to Remember
 

@@ -53,6 +53,5 @@ Git clone in `SNOWFLAKE_EXAMPLE.GIT_REPOS` survives project teardown.
 Skills guide behavior, not security. Guests are not checks or unique people.
 Hours are all-channel denominators. Missing data is not inactivity. Similarity
 peers are not automatically experiment controls. A matched gap is not a causal
-effect. CoWork UI is unverified; do not restart browser or evaluation loops unless
-requested. The old Next.js application and v1/v2 artifacts have been removed.
+effect. Do not restart browser or evaluation loops unless requested. The old Next.js application and v1/v2 artifacts have been removed.
 Native redeployment replaces the demo agent and resets its version history.

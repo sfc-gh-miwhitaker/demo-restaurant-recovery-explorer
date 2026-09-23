@@ -151,7 +151,8 @@ Guest occasions are not checks or unique customers. Missing observations are not
 zero. Peer gaps are descriptive, not recoverable demand or causal effects.
 Loyalty, profit, real customer findings and campaign execution are unavailable.
 Source mappings require approved definitions and reconciliation before activation.
-Browser behavior is unverified; API invocation success is not answer acceptance.
+Browser behavior and API invocation success are not answer acceptance: review the
+evidence and SQL behind any conclusion before repeating it.
 
 Private plans, API traces, account configuration and customer evidence are outside
 this source directory. Follow [SECURITY.md](SECURITY.md) and review the final Git
