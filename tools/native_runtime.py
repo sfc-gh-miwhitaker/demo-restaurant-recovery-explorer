@@ -14,12 +14,12 @@ Where it runs
     after this returns, and never grants it to the reader role -- the agent
     has no path to this code at all.
 
-Why it is defensive
-    A seed load is a DELETE followed by an INSERT against well-known object
-    names in a shared database. Every check below exists to make sure those
-    names still refer to this demo, so that a namespace collision is a failed
-    deployment rather than someone else's data being destroyed. The tests are
-    ordered cheapest-first and all run before any write.
+Why it is careful
+    The load is a DELETE followed by an INSERT, staged through temporary tables
+    and committed once, so an interrupted run leaves the previous fixture intact.
+    It targets a disposable demo database, so there are no ownership or marker
+    checks -- only the schema contract check, which prevents a positional INSERT
+    from loading values into the wrong columns.
 """
 
 from datetime import date
@@ -29,27 +29,6 @@ from generate_cowork import FIELDS, RELEASE, observations, validate
 
 
 SCHEMA = 'SNOWFLAKE_EXAMPLE.RESTAURANT_RECOVERY'
-
-
-def require_demo_object(session, kind, name, schema):
-    """Raise unless an existing object of this name is demonstrably this demo.
-
-    Absence is fine -- a first deployment has nothing to check. What is not
-    fine is an object of the right name that somebody else owns.
-    """
-    rows = session.sql(f'SHOW {kind} IN SCHEMA {schema}').collect()
-    for row in rows:
-        values = row.as_dict()
-        if values['name'] == name:
-            # Two independent signals, both required: SYSADMIN ownership and
-            # the 'DEMO:' comment marker this project stamps on everything.
-            if values.get('owner') != 'SYSADMIN' or 'DEMO:' not in (values.get('comment') or ''):
-                # Semantic views are the documented exception. Their comment
-                # comes from the JSON payload's "description" field, which has
-                # no room for the marker prefix, so ownership plus the release
-                # description is the equivalent proof for them.
-                if kind != 'SEMANTIC VIEWS' or values.get('owner') != 'SYSADMIN' or 'Synthetic restaurant recovery' not in (values.get('comment') or ''):
-                    raise ValueError(f'{name} is not marked as this demo; review collision')
 
 
 def seed(session):
@@ -66,33 +45,8 @@ def seed(session):
     # invalid, the deployment fails having changed nothing.
     tables = observations()
     validate(tables)
-    # Collision checks across every object this deployment will replace: the
-    # tables it writes, the semantic views the later scripts replace, and the
-    # agent. All of it before the first write, so the deployment cannot stop
-    # half way and leave the demo in an unusable state.
-    for name in tables:
-        require_demo_object(session, 'TABLES', name, SCHEMA)
-    for suffix in ('PERFORMANCE', 'OPERATIONS', 'COMPARISONS'):
-        require_demo_object(session, 'SEMANTIC VIEWS', f'SV_RESTAURANT_RECOVERY_{suffix}', 'SNOWFLAKE_EXAMPLE.SEMANTIC_MODELS')
-    existing_agents = session.sql(f'SHOW AGENTS IN SCHEMA {SCHEMA}').collect()
-    for row in existing_agents:
-        if row['name'] == 'RESTAURANT_RECOVERY_AGENT' and row['owner'] != 'SYSADMIN':
-            raise ValueError('Agent ownership differs; refusing replacement')
     for name, rows in tables.items():
         target = f'{SCHEMA}.{name}'
-        # Content checks on the live table. Any row from another release means
-        # these tables are not exclusively this demo's, and the DELETE below
-        # would destroy data this deployment does not own.
-        # Bound parameter, not string interpolation, for the release value.
-        invalid = session.sql(f'SELECT COUNT(*) FROM {target} WHERE RELEASE_ID IS NULL OR RELEASE_ID <> ?', params=[RELEASE]).collect()[0][0]
-        if invalid:
-            raise ValueError(f'{name} contains another release; refusing replacement')
-        if name == 'RELEASE_METADATA':
-            # Belt and braces: the synthetic flag is asserted in the data, and
-            # re-checked here, so this loader cannot be pointed at real data.
-            # IS DISTINCT FROM is NULL-safe, where <> TRUE would not be.
-            if session.sql(f'SELECT COUNT(*) FROM {target} WHERE SYNTHETIC IS DISTINCT FROM TRUE').collect()[0][0]:
-                raise ValueError('Non-synthetic data found; refusing replacement')
         # Field names AND their order must match the generator's contract.
         # Order matters because the INSERT below is positional: a reordered
         # table would load values into the wrong columns without any type
